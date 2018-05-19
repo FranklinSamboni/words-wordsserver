@@ -3,15 +3,15 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.frank.Words.util;
+package com.frank.Words.repository;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import com.frank.Words.data.Speech;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 /**
  *
  * @author FRANK
  */
-@ConfigurationProperties(prefix = "pro")
-public class Properties {
+public interface SpeechRepository extends MongoRepository<Speech,String>{
     
 }

@@ -5,6 +5,7 @@
  */
 package com.frank.Words.data;
 
+import java.util.Date;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
@@ -20,7 +21,7 @@ public class Speech {
     public Speech(String speech) {
         this.speech = speech;
     }
-
+    
     public String getSpeech() {
         return speech;
     }
@@ -28,4 +29,5 @@ public class Speech {
     public void setSpeech(String speech) {
         this.speech = speech;
     }
+
 }

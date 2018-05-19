@@ -6,6 +6,7 @@
 package com.frank.Words.util;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,6 +19,14 @@ public class ResponseFormatUtil {
         Map<String,Object> map = new HashMap<>(2);
         map.put("success", true);
         map.put("data", object);
+        return map;
+    }
+    
+    public static Map<String,Object> OK(List list){
+        Map<String,Object> map = new HashMap<>(2);
+        map.put("success", true);
+        map.put("data", list);
+        map.put("total", list != null ? list.size() : 0);
         return map;
     }
     
