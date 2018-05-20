@@ -2,6 +2,7 @@
 Aplicación que permite convertir un audio a texto, lista los textos convertidos y las palabras usadas en estos, para ello expone 3 
 servicios REST utilizando Spring Boot
 
+Frontend en: https://github.com/FranklinSamboni/words-wordsweb
 
 # Servicio /upload
 Recibe un parámetro llamado 'audioURL' que especifica la url de algún audio en cualquiera de estos formatos
