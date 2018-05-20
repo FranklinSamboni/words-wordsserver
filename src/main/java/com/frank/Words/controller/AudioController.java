@@ -8,25 +8,19 @@ package com.frank.Words.controller;
 import com.frank.Words.service.AudioService;
 import com.frank.Words.util.Constants;
 import com.frank.Words.util.ResponseFormatUtil;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.HashMap;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.client.support.BasicAuthorizationInterceptor;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.client.RestTemplate;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  *
@@ -35,6 +29,8 @@ import org.springframework.web.client.RestTemplate;
 @RestController
 @RequestMapping("/audio")
 public class AudioController {
+    
+    private static final Log log = LogFactory.getLog("AudioController");
 
     @Autowired
     private AudioService audioService;
@@ -58,6 +54,7 @@ public class AudioController {
                 return ResponseFormatUtil.ERROR("URL incorrecta.");
             }
         } catch (Exception e) {
+            log.error(e);
             return ResponseFormatUtil.ERROR(e.getMessage());
         }
     }
@@ -82,8 +79,9 @@ public class AudioController {
         }
     }
 
-    private String getExtension(String url) {
-        String ext = FilenameUtils.getExtension(url);
+    private String getExtension(String url) throws MalformedURLException {
+        URL uUrl = new URL(url);
+        String ext = FilenameUtils.getExtension(uUrl.getPath());
         if (ext != null) {
             if (ext.equals(Constants.EXT_WAV)
                     || ext.equals(Constants.EXT_WEBM)

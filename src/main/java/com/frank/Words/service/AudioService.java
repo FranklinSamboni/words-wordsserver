@@ -9,7 +9,6 @@ import com.frank.Words.data.Speech;
 import com.frank.Words.data.Word;
 import com.frank.Words.util.AudioException;
 import com.frank.Words.util.Constants;
-import com.ibm.watson.developer_cloud.http.HttpMediaType;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.SpeechToText;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.model.RecognizeOptions;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.model.SpeechResults;
@@ -19,23 +18,20 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import com.frank.Words.repository.SpeechRepository;
 import com.frank.Words.repository.WordRepository;
+import edu.cmu.sphinx.api.Configuration;
+import edu.cmu.sphinx.api.StreamSpeechRecognizer;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.ConnectException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  *
@@ -46,27 +42,25 @@ public class AudioService {
 
     @Autowired
     private SpeechRepository speechRepository;
-    
+
     @Autowired
     private WordRepository wordRepository;
 
-    public String upload(String audioURL, String ext) throws AudioException, FileNotFoundException, IOException {
+    public String upload(String audioURL, String ext) throws AudioException, FileNotFoundException, ConnectException, IOException {
 
         RestTemplate restT = new RestTemplate();
         byte[] bytes = restT.getForObject(audioURL, byte[].class);
 
-        File file = File.createTempFile("copia", "." + ext, null);
-        FileOutputStream out = new FileOutputStream(file);
-        out.write(bytes);
-        out.close();
-
-        String contentType = "audio/" + ext;
-        String text = speechToTextIBM(file, contentType, Constants.IMB_ES_MODEL);
-
+        String text = speechToTextIBM(bytes, ext);
         if (!text.isEmpty()) {
             saveWords(text);
         } else {
-            throw new AudioException("No fue posible obtener la traducción del audio");
+            text = speechToTextSPHINX(bytes);
+            if (!text.isEmpty()) {
+                saveWords(text);
+            } else {
+                throw new AudioException("No fue posible obtener la traducción del audio");
+            }
         }
         return text;
 
@@ -75,7 +69,7 @@ public class AudioService {
     public List<Speech> getSpeeches() throws Exception {
         return speechRepository.findAll();
     }
-    
+
     public List<Object[]> getUsedWords() {
         List<Word> words = wordRepository.findAll();
         List<Object[]> arrObjs = new ArrayList();
@@ -88,15 +82,21 @@ public class AudioService {
         return arrObjs;
     }
 
+    private String speechToTextIBM(byte[] bytes, String ext) throws IOException {
 
-    private String speechToTextIBM(File file, String contentType, String language) {
+        File file = File.createTempFile("src/main/resources/static/audio/copia", "." + ext, null);
+        FileOutputStream out = new FileOutputStream(file);
+        out.write(bytes);
+        out.close();
+
+        String contentType = "audio/" + ext;
 
         SpeechToText speechToText = new SpeechToText();
         speechToText.setUsernameAndPassword(Constants.IBM_USERNAME, Constants.IMB_PASSWORD);
 
         RecognizeOptions options = new RecognizeOptions.Builder()
                 .contentType(contentType)
-                .model(language)
+                .model(Constants.IMB_ES_MODEL)
                 .build();
         SpeechResults result = speechToText.recognize(file, options).execute();
 
@@ -104,34 +104,50 @@ public class AudioService {
         if (!result.getResults().isEmpty()) {
             for (Transcript tp : result.getResults()) {
                 if (tp.isFinal()) {
-                    speech = tp.getAlternatives().get(0).getTranscript();
-                    break;
+                    speech = speech + " " + tp.getAlternatives().get(0).getTranscript();
                 }
             }
         }
         return speech;
+    }
 
+    private String speechToTextSPHINX(byte[] bytes) throws IOException {
+        Configuration configuration = new Configuration();
+
+        configuration.setAcousticModelPath("src/main/resources/cmusphinx-es-5.2/model_parameters/voxforge_es_sphinx.cd_ptm_4000");
+        configuration.setDictionaryPath("src/main/resources/cmusphinx-es-5.2/etc/voxforge_es_sphinx.dic");
+        configuration.setLanguageModelPath("src/main/resources/cmusphinx-es-5.2/etc/es-20k.lm");
+
+        StreamSpeechRecognizer recognizer = new StreamSpeechRecognizer(configuration);
+        InputStream stream = new ByteArrayInputStream(bytes);
+
+        recognizer.startRecognition(stream);
+        SpeechResult result;
+        String speech = "";
+        while ((result = recognizer.getResult()) != null) {
+            speech = speech + " " + result.getHypothesis();
+        }
+        recognizer.stopRecognition();
+        return speech;
     }
 
     private void saveWords(String words) {
         Speech speech = new Speech(words);
         speechRepository.insert(speech);
-        
-        String[] arrWords = words.split(words);
-        for(String strWord : arrWords){
-            Optional<Word> optional = wordRepository.findById(strWord); 
+
+        String[] arrWords = words.split(" ");
+        for (String strWord : arrWords) {
+            Optional<Word> optional = wordRepository.findById(strWord);
             Word wr;
-            if(optional.isPresent()){
+            if (optional.isPresent()) {
                 wr = optional.get();
-                wr.setRepetitions(wr.getRepetitions()+1);
+                wr.setRepetitions(wr.getRepetitions() + 1);
                 wordRepository.save(wr);
-            }
-            else{
-                wr = new Word(strWord,0);
+            } else {
+                wr = new Word(strWord, 0);
                 wordRepository.insert(wr);
             }
         }
     }
-
 
 }
