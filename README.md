@@ -1,6 +1,6 @@
 # words-wordsserver
 Aplicación que permite convertir un audio a texto, lista los textos convertidos y las palabras usadas en estos, para ello expone 3 
-servicios REST utilizando Spring Boot
+servicios REST utilizando Spring Boot y una base de datos en Mongodb
 
 Frontend en: https://github.com/FranklinSamboni/words-wordsweb
 
