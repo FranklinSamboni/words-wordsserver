@@ -32,10 +32,12 @@ import java.io.InputStream;
 import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -143,25 +145,22 @@ public class AudioService {
         //LinkedHashSet<String> wordsNotRepeated = new LinkedHashSet<>(Arrays.asList(arrWords));
         
         //Crea un Map con las palabras  y el numero de veces que esta se repitieron en el texto
-        Map<String, Integer> repetitions = new HashMap<>();
+        Map<String, Word> repetitions = new HashMap<>();
         for (String strWord : arrWords) {
-            Integer count = repetitions.get(strWord) != null ? repetitions.get(strWord) : 0;
-            repetitions.put(strWord, count+1);
+            Word w = repetitions.get(strWord) != null ? repetitions.get(strWord) : new Word(strWord,0);
+            w.setRepetitions(w.getRepetitions()+1);
+            repetitions.put(strWord, w);
         }
         
-        //Busca en la base de datos las palabras del texto que ya existen y actualiza su informacion
+        //Busca en la base de datos las palabras del texto que ya existen y
+        //actualiza el numero de veces que se van repitiendo
         Iterable<Word> dbWords = wordRepository.findAllById(repetitions.keySet());
         for (Word w : dbWords) {
-            Integer count = repetitions.get(w.getWord()) != null ? repetitions.get(w.getWord()) : 0;
-            repetitions.put(w.getWord(), w.getRepetitions()+count);
+            w.setRepetitions(w.getRepetitions() + repetitions.get(w.getWord()).getRepetitions());
+            repetitions.put(w.getWord(), w);
         }    
         
-        //Se crea la lista a guardar
-        List<Word> wordsToSave = new ArrayList();
-        repetitions.entrySet().stream().forEach((w)->{
-            wordsToSave.add(new Word(w.getKey(),w.getValue()));
-        });
-        wordRepository.saveAll(wordsToSave);
+        wordRepository.saveAll(repetitions.values());
     }
 
 }
